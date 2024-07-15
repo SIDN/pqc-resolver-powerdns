@@ -1,0 +1,893 @@
+# Copyright (C) PowerDNS.COM BV and lots of contributors
+# 
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+# 
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License along
+# with this program; if not, write to the Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+
+diff --git a/configure.ac b/configure.ac
+index 93430f7a1..cc597979a 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -87,6 +87,9 @@ AC_CHECK_HEADERS(
+ 
+ PDNS_WITH_LIBSODIUM
+ PDNS_WITH_LIBDECAF
++PDNS_WITH_FALCON
++PDNS_WITH_MAYO
++PDNS_WITH_SQISIGN
+ PDNS_CHECK_LIBCRYPTO([
+ ],[
+    AC_MSG_ERROR([OpenSSL/libcrypto not found])
+diff --git a/m4/pdns_with_falcon.m4 b/m4/pdns_with_falcon.m4
+new file mode 100644
+index 000000000..dbbce5dde
+--- /dev/null
++++ b/m4/pdns_with_falcon.m4
+@@ -0,0 +1,25 @@
++dnl XXX clean this up later
++
++AC_DEFUN([PDNS_WITH_FALCON], [
++  AC_MSG_CHECKING([whether we will be linking in falcon])
++  AC_ARG_WITH([falcon],
++    AS_HELP_STRING([--with-falcon],[use falcon @<:@default=auto@:>@]),
++    [with_falcon=$withval],
++    [with_falcon=auto],
++  )
++  AC_MSG_RESULT([$with_falcon])
++
++  AS_IF([test "x$with_falcon" != "xno"], [
++    AS_IF([test "x$with_falcon" = "xyes" -o "x$with_falcon" = "xauto"], [
++       AC_DEFINE([HAVE_FALCON], [1], [Define if using FALCON.])
++       LIBS="$LIBS -lfalcon-512_clean"
++       FALCON_LIBS="$LIBS"
++    ])
++  ])
++  AM_CONDITIONAL([LIBFALCON], [test "x$FALCON_LIBS" != "x"])
++  AS_IF([test "x$with_falcon" = "xyes"], [
++    AS_IF([test x"$FALCON_LIBS" = "x"], [
++      AC_MSG_ERROR([falcon requested but libraries were not found])
++    ])
++  ])
++])
+diff --git a/m4/pdns_with_mayo.m4 b/m4/pdns_with_mayo.m4
+new file mode 100644
+index 000000000..f8813f656
+--- /dev/null
++++ b/m4/pdns_with_mayo.m4
+@@ -0,0 +1,25 @@
++dnl XXX clean this up later
++
++AC_DEFUN([PDNS_WITH_MAYO], [
++  AC_MSG_CHECKING([whether we will be linking in mayo])
++  AC_ARG_WITH([mayo],
++    AS_HELP_STRING([--with-mayo],[use mayo @<:@default=auto@:>@]),
++    [with_mayo=$withval],
++    [with_mayo=auto],
++  )
++  AC_MSG_RESULT([$with_mayo])
++
++  AS_IF([test "x$with_mayo" != "xno"], [
++    AS_IF([test "x$with_mayo" = "xyes" -o "x$with_mayo" = "xauto"], [
++       AC_DEFINE([HAVE_MAYO], [1], [Define if using MAYO.])
++       LIBS="$LIBS -lmayo_2 -lmayo_common_sys"
++       MAYO_LIBS="$LIBS"
++    ])
++  ])
++  AM_CONDITIONAL([LIBMAYO], [test "x$MAYO_LIBS" != "x"])
++  AS_IF([test "x$with_mayo" = "xyes"], [
++    AS_IF([test x"$MAYO_LIBS" = "x"], [
++      AC_MSG_ERROR([mayo requested but libraries were not found])
++    ])
++  ])
++])
+diff --git a/m4/pdns_with_sqisign.m4 b/m4/pdns_with_sqisign.m4
+new file mode 100644
+index 000000000..6d7ac9521
+--- /dev/null
++++ b/m4/pdns_with_sqisign.m4
+@@ -0,0 +1,25 @@
++dnl XXX clean this up later
++
++AC_DEFUN([PDNS_WITH_SQISIGN], [
++  AC_MSG_CHECKING([whether we will be linking in sqisign])
++  AC_ARG_WITH([sqisign],
++    AS_HELP_STRING([--with-sqisign],[use sqisign @<:@default=auto@:>@]),
++    [with_sqisign=$withval],
++    [with_sqisign=auto],
++  )
++  AC_MSG_RESULT([$with_sqisign])
++
++  AS_IF([test "x$with_sqisign" != "xno"], [
++    AS_IF([test "x$with_sqisign" = "xyes" -o "x$with_sqisign" = "xauto"], [
++       AC_DEFINE([HAVE_SQISIGN], [1], [Define if using SQISign.])
++       LIBS="$LIBS -lsqisign_lvl1 -lsqisign_protocols_lvl1 -lsqisign_id2iso_lvl1 -lsqisign_klpt_lvl1 -lsqisign_precomp_lvl1 -lsqisign_quaternion_generic -lsqisign_intbig_generic -lsqisign_gf_lvl1 -lsqisign_ec_lvl1 -lsqisign_common_sys -lgmp"
++       SQISIGN_LIBS="$LIBS"
++    ])
++  ])
++  AM_CONDITIONAL([LIBSQISIGN], [test "x$SQISIGN_LIBS" != "x"])
++  AS_IF([test "x$with_sqisign" = "xyes"], [
++    AS_IF([test x"$SQISIGN_LIBS" = "x"], [
++      AC_MSG_ERROR([sqisign requested but libraries were not found])
++    ])
++  ])
++])
+diff --git a/pdns/Makefile.am b/pdns/Makefile.am
+index f391d64a4..521d67a0b 100644
+--- a/pdns/Makefile.am
++++ b/pdns/Makefile.am
+@@ -314,6 +314,21 @@ pdns_server_SOURCES += sodiumsigners.cc
+ pdns_server_LDADD += $(LIBSODIUM_LIBS)
+ endif
+ 
++if LIBFALCON
++pdns_server_SOURCES += falconsigners.cc
++pdns_server_LDADD += $(LIBFALCON_LIBS)
++endif
++
++if LIBMAYO
++pdns_server_SOURCES += mayosigners.cc
++pdns_server_LDADD += $(LIBMAYO_LIBS)
++endif
++
++if LIBSQISIGN
++pdns_server_SOURCES += sqisignsigners.cc
++pdns_server_LDADD += $(LIBSQISIGN_LIBS)
++endif
++
+ if LIBDECAF
+ pdns_server_SOURCES += decafsigners.cc
+ pdns_server_LDADD += $(LIBDECAF_LIBS)
+@@ -422,6 +437,21 @@ pdnsutil_SOURCES += sodiumsigners.cc
+ pdnsutil_LDADD += $(LIBSODIUM_LIBS)
+ endif
+ 
++if LIBFALCON
++pdnsutil_SOURCES += falconsigners.cc
++pdnsutil_LDADD += $(LIBFALCON_LIBS)
++endif
++
++if LIBMAYO
++pdnsutil_SOURCES += mayosigners.cc
++pdnsutil_LDADD += $(LIBMAYO_LIBS)
++endif
++
++if LIBSQISIGN
++pdnsutil_SOURCES += sqisignsigners.cc
++pdnsutil_LDADD += $(LIBSQISIGN_LIBS)
++endif
++
+ if LIBDECAF
+ pdnsutil_SOURCES += decafsigners.cc
+ pdnsutil_LDADD += $(LIBDECAF_LIBS)
+@@ -1464,6 +1494,24 @@ testrunner_LDADD += $(LIBSODIUM_LIBS)
+ speedtest_LDADD += $(LIBSODIUM_LIBS)
+ endif
+ 
++if LIBFALCON
++testrunner_SOURCES += falconsigners.cc
++pdnsutil_LDADD += $(LIBFALCON_LIBS)
++speedtest_LDADD += $(LIBFALCON_LIBS)
++endif
++
++if LIBMAYO
++testrunner_SOURCES += mayosigners.cc
++testrunner_LDADD += $(LIBMAYO_LIBS)
++speedtest_LDADD += $(LIBMAYO_LIBS)
++endif
++
++if LIBSQISIGN
++testrunner_SOURCES += sqisignsigners.cc
++testrunner_LDADD += $(LIBSQISIGN_LIBS)
++speedtest_LDADD += $(LIBSQISIGN_LIBS)
++endif
++
+ if LIBDECAF
+ testrunner_SOURCES += decafsigners.cc
+ testrunner_LDADD += $(LIBDECAF_LIBS)
+diff --git a/pdns/dbdnsseckeeper.cc b/pdns/dbdnsseckeeper.cc
+index 9d7b85a33..c1562cf3f 100644
+--- a/pdns/dbdnsseckeeper.cc
++++ b/pdns/dbdnsseckeeper.cc
+@@ -98,6 +98,12 @@ bool DNSSECKeeper::addKey(const DNSName& name, bool setSEPBit, int algorithm, in
+         bits = 384;
+       else if(algorithm == DNSSECKeeper::ED448)
+         bits = 456;
++      else if(algorithm == DNSSECKeeper::MAYO2)
++        bits = 24*8;
++      else if(algorithm == DNSSECKeeper::SQISIGN1)
++        bits = 782*8;
++      else if(algorithm == DNSSECKeeper::FALCON512)
++        bits = 1281*8;
+       else {
+         throw runtime_error("Can not guess key size for algorithm "+std::to_string(algorithm));
+       }
+@@ -106,6 +112,7 @@ bool DNSSECKeeper::addKey(const DNSName& name, bool setSEPBit, int algorithm, in
+   shared_ptr<DNSCryptoKeyEngine> dpk(DNSCryptoKeyEngine::make(algorithm));
+   try{
+     dpk->create(bits);
++    cout << "pub: " << Base64Encode(dpk->getPublicKeyString()) << "\n";
+   } catch (const std::runtime_error& error){
+     throw runtime_error("The algorithm does not support the given bit size.");
+   }
+diff --git a/pdns/dnssecinfra.cc b/pdns/dnssecinfra.cc
+index 5a8e3cd96..d07b9f5d9 100644
+--- a/pdns/dnssecinfra.cc
++++ b/pdns/dnssecinfra.cc
+@@ -307,6 +307,12 @@ void DNSCryptoKeyEngine::testMakers(unsigned int algo, maker_t* creator, maker_t
+     bits = 384;
+   else if(algo == DNSSECKeeper::ED448)
+     bits = 456;
++  else if(algo == DNSSECKeeper::MAYO2)
++    bits = 24*8;
++  else if(algo == DNSSECKeeper::SQISIGN1)
++    bits = 782*8;
++  else if(algo == DNSSECKeeper::FALCON512)
++    bits = 1281*8;
+   else
+     throw runtime_error("Can't guess key size for algorithm "+std::to_string(algo));
+ 
+diff --git a/pdns/dnsseckeeper.hh b/pdns/dnsseckeeper.hh
+index 10503d534..3da3242c9 100644
+--- a/pdns/dnsseckeeper.hh
++++ b/pdns/dnsseckeeper.hh
+@@ -53,7 +53,10 @@ public:
+     ECDSA256=13,
+     ECDSA384=14,
+     ED25519=15,
+-    ED448=16
++    ED448=16,
++    MAYO2=249,
++    SQISIGN1=250,
++    FALCON512=251,
+   };
+ 
+   enum dsdigestalgorithm_t : uint8_t {
+@@ -111,6 +114,9 @@ public:
+     if (pdns_iequals(algorithm, "ecdsap384sha384")) return ECDSA384;
+     if (pdns_iequals(algorithm, "ed25519")) return ED25519;
+     if (pdns_iequals(algorithm, "ed448")) return ED448;
++    if (pdns_iequals(algorithm, "mayo2")) return MAYO2;
++    if (pdns_iequals(algorithm, "sqisign1")) return SQISIGN1;
++    if (pdns_iequals(algorithm, "falcon512")) return FALCON512;
+     if (pdns_iequals(algorithm, "indirect")) return 252;
+     if (pdns_iequals(algorithm, "privatedns")) return 253;
+     if (pdns_iequals(algorithm, "privateoid")) return 254;
+@@ -153,6 +159,12 @@ public:
+         return "ED25519";
+       case ED448:
+         return "ED448";
++      case MAYO2:
++        return "MAYO2";
++      case SQISIGN1:
++        return "SQISIGN1";
++      case FALCON512:
++        return "FALCON512";
+       case 252:
+         return "INDIRECT";
+       case 253:
+diff --git a/pdns/falconsigners.cc b/pdns/falconsigners.cc
+new file mode 100644
+index 000000000..85f04f174
+--- /dev/null
++++ b/pdns/falconsigners.cc
+@@ -0,0 +1,118 @@
++extern "C"
++{
++#ifdef HAVE_CONFIG_H
++#include "config.h"
++#endif
++#include <patad-testbed/falcon512.h>
++}
++#include "dnssecinfra.hh"
++#include "dnsseckeeper.hh"
++
++class Falcon512DNSCryptoKeyEngine : public DNSCryptoKeyEngine
++{
++public:
++  explicit Falcon512DNSCryptoKeyEngine(unsigned int algo) :
++    DNSCryptoKeyEngine(algo)
++  {}
++  string getName() const override { return "Falcon-512"; }
++  void create(unsigned int bits) override;
++
++  [[nodiscard]] storvector_t convertToISCVector() const override;
++  [[nodiscard]] std::string sign(const std::string& msg) const override;
++  [[nodiscard]] bool verify(const std::string& msg, const std::string& signature) const override;
++  [[nodiscard]] std::string getPublicKeyString() const override;
++  [[nodiscard]] int getBits() const override;
++  void fromISCMap(DNSKEYRecordContent& drc, std::map<std::string, std::string>& stormap) override;
++  void fromPublicKeyString(const std::string& content) override;
++
++  static std::unique_ptr<DNSCryptoKeyEngine> maker(unsigned int algorithm)
++  {
++    return make_unique<Falcon512DNSCryptoKeyEngine>(algorithm);
++  }
++
++private:
++  unsigned char d_pubkey[PQCLEAN_FALCON512_CLEAN_CRYPTO_PUBLICKEYBYTES];
++  unsigned char d_seckey[PQCLEAN_FALCON512_CLEAN_CRYPTO_SECRETKEYBYTES];
++};
++
++void Falcon512DNSCryptoKeyEngine::create(unsigned int bits)
++{
++  if (bits != (unsigned int)getBits()) {
++    throw runtime_error("Unsupported key length of " + std::to_string(bits) + " bits requested, Falcon512 class");
++  }
++  PQCLEAN_FALCON512_CLEAN_crypto_sign_keypair(d_pubkey, d_seckey);
++}
++
++int Falcon512DNSCryptoKeyEngine::getBits() const
++{
++  return PQCLEAN_FALCON512_CLEAN_CRYPTO_SECRETKEYBYTES << 3;
++}
++
++DNSCryptoKeyEngine::storvector_t Falcon512DNSCryptoKeyEngine::convertToISCVector() const
++{
++  storvector_t storvector;
++  string algorithm = std::to_string(DNSSECKeeper::FALCON512) + " (Falcon-512)";
++
++  storvector.emplace_back("Algorithm", algorithm);
++
++  storvector.emplace_back("PrivateKey", string((char*)d_seckey, PQCLEAN_FALCON512_CLEAN_CRYPTO_SECRETKEYBYTES));
++  storvector.emplace_back("PublicKey", string((char*)d_pubkey, PQCLEAN_FALCON512_CLEAN_CRYPTO_PUBLICKEYBYTES));
++  return storvector;
++}
++
++void Falcon512DNSCryptoKeyEngine::fromISCMap(DNSKEYRecordContent& drc, std::map<std::string, std::string>& stormap)
++{
++  pdns::checked_stoi_into(drc.d_algorithm, stormap["algorithm"]);
++  string publicKey = stormap["publickey"];
++  string privateKey = stormap["privatekey"];
++
++  if (privateKey.length() != PQCLEAN_FALCON512_CLEAN_CRYPTO_SECRETKEYBYTES)
++    throw runtime_error("Private key size mismatch in ISCMap, Falcon512 class");
++
++  if (publicKey.length() != PQCLEAN_FALCON512_CLEAN_CRYPTO_PUBLICKEYBYTES)
++    throw runtime_error("Public key size mismatch in ISCMap, Falcon512 class");
++
++  memcpy(d_seckey, privateKey.c_str(), PQCLEAN_FALCON512_CLEAN_CRYPTO_SECRETKEYBYTES);
++  memcpy(d_pubkey, publicKey.c_str(), PQCLEAN_FALCON512_CLEAN_CRYPTO_PUBLICKEYBYTES);
++}
++
++std::string Falcon512DNSCryptoKeyEngine::getPublicKeyString() const
++{
++  return string((char*)d_pubkey, PQCLEAN_FALCON512_CLEAN_CRYPTO_PUBLICKEYBYTES);
++}
++
++void Falcon512DNSCryptoKeyEngine::fromPublicKeyString(const std::string& input)
++{
++  if (input.length() != PQCLEAN_FALCON512_CLEAN_CRYPTO_PUBLICKEYBYTES)
++    throw runtime_error("Public key size mismatch, Falcon512 class");
++
++  memcpy(d_pubkey, input.c_str(), PQCLEAN_FALCON512_CLEAN_CRYPTO_PUBLICKEYBYTES);
++}
++
++std::string Falcon512DNSCryptoKeyEngine::sign(const std::string& msg) const
++{
++  unsigned char signature[PQCLEAN_FALCON512_CLEAN_CRYPTO_BYTES];
++  size_t signature_length;
++
++  if (PQCLEAN_FALCON512_CLEAN_crypto_sign_signature(signature, &signature_length, (const unsigned char*)msg.c_str(), msg.length(), d_seckey) != 0) {
++    throw runtime_error(getName() + " failed to generate signature");
++  }
++
++  return {(const char*)signature, signature_length};
++}
++
++bool Falcon512DNSCryptoKeyEngine::verify(const std::string& msg, const std::string& signature) const
++{
++  return PQCLEAN_FALCON512_CLEAN_crypto_sign_verify((const unsigned char*)signature.c_str(), signature.length(), (const unsigned char*)msg.c_str(), msg.length(), d_pubkey) == 0;
++}
++
++namespace
++{
++const struct LoaderFalconStruct
++{
++  LoaderFalconStruct()
++  {
++    DNSCryptoKeyEngine::report(DNSSECKeeper::FALCON512, &Falcon512DNSCryptoKeyEngine::maker);
++  }
++} loaderfalcon;
++}
+diff --git a/pdns/mayosigners.cc b/pdns/mayosigners.cc
+new file mode 100644
+index 000000000..ec18fe793
+--- /dev/null
++++ b/pdns/mayosigners.cc
+@@ -0,0 +1,121 @@
++extern "C"
++{
++#ifdef HAVE_CONFIG_H
++#include "config.h"
++#endif
++#define MAYO_VARIANT MAYO_2
++#define MAYO_BUILD_TYPE_OPT
++#define ENABLE_PARAMS_DYNAMIC
++#include <patad-testbed/mayo.h>
++}
++#include "dnssecinfra.hh"
++#include "dnsseckeeper.hh"
++
++class MAYO2DNSCryptoKeyEngine : public DNSCryptoKeyEngine
++{
++public:
++  explicit MAYO2DNSCryptoKeyEngine(unsigned int algo) :
++    DNSCryptoKeyEngine(algo)
++  {}
++  string getName() const override { return "MAYO-2"; }
++  void create(unsigned int bits) override;
++
++  [[nodiscard]] storvector_t convertToISCVector() const override;
++  [[nodiscard]] std::string sign(const std::string& msg) const override;
++  [[nodiscard]] bool verify(const std::string& msg, const std::string& signature) const override;
++  [[nodiscard]] std::string getPublicKeyString() const override;
++  [[nodiscard]] int getBits() const override;
++  void fromISCMap(DNSKEYRecordContent& drc, std::map<std::string, std::string>& stormap) override;
++  void fromPublicKeyString(const std::string& content) override;
++
++  static std::unique_ptr<DNSCryptoKeyEngine> maker(unsigned int algorithm)
++  {
++    return make_unique<MAYO2DNSCryptoKeyEngine>(algorithm);
++  }
++
++private:
++  unsigned char d_pubkey[MAYO_2_cpk_bytes];
++  unsigned char d_seckey[MAYO_2_csk_bytes];
++};
++
++void MAYO2DNSCryptoKeyEngine::create(unsigned int bits)
++{
++  if (bits != (unsigned int)getBits()) {
++    throw runtime_error("Unsupported key length of " + std::to_string(bits) + " bits requested, MAYO2 class");
++  }
++  mayo_keypair(0, d_pubkey, d_seckey);
++}
++
++int MAYO2DNSCryptoKeyEngine::getBits() const
++{
++  return MAYO_2_csk_bytes << 3;
++}
++
++DNSCryptoKeyEngine::storvector_t MAYO2DNSCryptoKeyEngine::convertToISCVector() const
++{
++  storvector_t storvector;
++  string algorithm = std::to_string(DNSSECKeeper::MAYO2) + " (MAYO-2)";
++
++  storvector.emplace_back("Algorithm", algorithm);
++
++  storvector.emplace_back("PrivateKey", string((char*)d_seckey, MAYO_2_csk_bytes));
++  storvector.emplace_back("PublicKey", string((char*)d_pubkey, MAYO_2_cpk_bytes));
++  return storvector;
++}
++
++void MAYO2DNSCryptoKeyEngine::fromISCMap(DNSKEYRecordContent& drc, std::map<std::string, std::string>& stormap)
++{
++  pdns::checked_stoi_into(drc.d_algorithm, stormap["algorithm"]);
++  string publicKey = stormap["publickey"];
++  string privateKey = stormap["privatekey"];
++
++  if (privateKey.length() != MAYO_2_csk_bytes)
++    throw runtime_error("Private key size mismatch in ISCMap, MAYO2 class");
++
++  if (publicKey.length() != MAYO_2_cpk_bytes)
++    throw runtime_error("Public key size mismatch in ISCMap, MAYO2 class");
++
++  memcpy(d_seckey, privateKey.c_str(), MAYO_2_csk_bytes);
++  memcpy(d_pubkey, publicKey.c_str(), MAYO_2_cpk_bytes);
++}
++
++std::string MAYO2DNSCryptoKeyEngine::getPublicKeyString() const
++{
++  return string((char*)d_pubkey, MAYO_2_cpk_bytes);
++}
++
++void MAYO2DNSCryptoKeyEngine::fromPublicKeyString(const std::string& input)
++{
++  if (input.length() != MAYO_2_cpk_bytes)
++    throw runtime_error("Public key size mismatch, MAYO2 class");
++
++  memcpy(d_pubkey, input.c_str(), MAYO_2_cpk_bytes);
++}
++
++std::string MAYO2DNSCryptoKeyEngine::sign(const std::string& msg) const
++{
++  size_t signature_length;
++  unsigned char signature[MAYO_2_sig_bytes];
++
++  if (mayo_sign_signature(0, signature, &signature_length, (const unsigned char*)msg.c_str(), msg.length(), d_seckey) != 0) {
++    throw runtime_error(getName() + " failed to generate signature");
++  }
++
++  return {(const char*)signature, signature_length};
++}
++
++bool MAYO2DNSCryptoKeyEngine::verify(const std::string& msg, const std::string& signature) const
++{
++  return mayo_verify(0, (const unsigned char*)msg.c_str(), msg.length(), (const unsigned char*)signature.c_str(), d_pubkey) == 0;
++}
++
++namespace
++{
++const struct LoaderMAYOStruct
++{
++  LoaderMAYOStruct()
++  {
++    DNSCryptoKeyEngine::report(DNSSECKeeper::MAYO2, &MAYO2DNSCryptoKeyEngine::maker);
++  }
++} loadermean;
++}
+diff --git a/pdns/pdnsutil.cc b/pdns/pdnsutil.cc
+index 6e0466a97..4b5c48090 100644
+--- a/pdns/pdnsutil.cc
++++ b/pdns/pdnsutil.cc
+@@ -2549,6 +2549,18 @@ try
+ #endif
+ #if defined(HAVE_LIBDECAF) || defined(HAVE_LIBCRYPTO_ED448)
+     cout << "|ed448";
++#endif
++#ifdef HAVE_SQISIGN
++    cout<<"|sqisign1";
++#endif
++#ifdef HAVE_FALCON
++    cout<<"|falcon512";
++#endif
++#ifdef HAVE_MAYO
++    cout<<"|mayo2";
++#endif
++#ifdef HAVE_SQISIGN
++    cout<<"|sqisign1";
+ #endif
+     cout << "]" << endl;
+     cout << "                                   Add a ZSK or KSK to zone and specify algo&bits" << endl;
+@@ -3010,6 +3022,15 @@ try
+ #endif
+ #if defined(HAVE_LIBDECAF) || defined(HAVE_LIBCRYPTO_ED448)
+       cerr << "|ed448";
++#endif
++#if HAVE_FALCON
++      cerr << "|falcon512";
++#endif
++#if HAVE_MAYO
++      cerr << "|mayo2";
++#endif
++#if HAVE_SQISIGN
++      cerr << "|sqisign1";
+ #endif
+       cerr << "]"<<endl;
+       cerr << endl;
+@@ -3658,6 +3679,15 @@ try
+ #endif
+ #if defined(HAVE_LIBDECAF) || defined(HAVE_LIBCRYPTO_ED448)
+       cerr << "|ed448";
++#endif
++#ifdef HAVE_FALCON
++      cerr << "|falcon512";
++#endif
++#ifdef HAVE_MAYO
++      cerr << "|mayo2";
++#endif
++#ifdef HAVE_SQISIGN
++      cerr << "|sqisign1";
+ #endif
+       cerr << "] [bits]"<<endl;
+       return 0;
+@@ -3697,6 +3727,12 @@ try
+           bits = 384;
+         else if(algorithm == DNSSECKeeper::ED448)
+           bits = 456;
++        else if(algorithm == DNSSECKeeper::FALCON512)
++          bits = 1281*8;
++        else if(algorithm == DNSSECKeeper::MAYO2)
++          bits = 24*8;
++        else if(algorithm == DNSSECKeeper::SQISIGN1)
++          bits = 782*8;
+         else {
+           throw runtime_error("Can not guess key size for algorithm "+std::to_string(algorithm));
+         }
+diff --git a/pdns/recursordist/Makefile.am b/pdns/recursordist/Makefile.am
+index dc30a296c..4b1e60d26 100644
+--- a/pdns/recursordist/Makefile.am
++++ b/pdns/recursordist/Makefile.am
+@@ -405,6 +405,42 @@ testrunner_SOURCES += \
+ testrunner_LDADD += $(LIBSODIUM_LIBS)
+ endif
+ 
++if LIBFALCON
++pdns_recursor_SOURCES += \
++	falconsigners.cc
++pdns_recursor_LDADD += $(LIBFALCON_LIBS)
++
++rec_control_LDADD += $(LIBFALCON_LIBS)
++
++testrunner_SOURCES += \
++	falconsigners.cc
++testrunner_LDADD += $(LIBFALCON_LIBS)
++endif
++
++if LIBMAYO
++pdns_recursor_SOURCES += \
++	mayosigners.cc
++pdns_recursor_LDADD += $(LIBMAYO_LIBS)
++
++rec_control_LDADD += $(LIBMAYO_LIBS)
++
++testrunner_SOURCES += \
++	mayosigners.cc
++testrunner_LDADD += $(LIBMAYO_LIBS)
++endif
++
++if LIBSQISIGN
++pdns_recursor_SOURCES += \
++	sqisignsigners.cc
++pdns_recursor_LDADD += $(LIBSQISIGN_LIBS)
++
++rec_control_LDADD += $(LIBSQISIGN_LIBS)
++
++testrunner_SOURCES += \
++	sqisignsigners.cc
++testrunner_LDADD += $(LIBSQISIGN_LIBS)
++endif
++
+ 
+ 
+ if LIBDECAF
+diff --git a/pdns/recursordist/configure.ac b/pdns/recursordist/configure.ac
+index 8f7e900b7..b5113b611 100644
+--- a/pdns/recursordist/configure.ac
++++ b/pdns/recursordist/configure.ac
+@@ -86,6 +86,9 @@ PDNS_CHECK_LIBCRYPTO_EDDSA
+ PDNS_WITH_LIBSODIUM
+ PDNS_WITH_LIBDECAF
+ PDNS_WITH_LIBCAP
++PDNS_WITH_FALCON
++PDNS_WITH_MAYO
++PDNS_WITH_SQISIGN
+ PDNS_CHECK_LIBCURL
+ 
+ PDNS_WITH_NET_SNMP
+@@ -229,7 +232,6 @@ AS_IF([test "x$LIBDECAF_LIBS" != "x" || test "x$libcrypto_ed448" = "xyes"],
+   [AC_MSG_NOTICE([ed448: yes])],
+   [AC_MSG_NOTICE([ed448: no])]
+ )
+-
+ AC_MSG_NOTICE([Protobuf: yes])
+ 
+ AS_IF([test "x$NET_SNMP_LIBS" != "x"],
+diff --git a/pdns/recursordist/falconsigners.cc b/pdns/recursordist/falconsigners.cc
+new file mode 120000
+index 000000000..8e85446bc
+--- /dev/null
++++ b/pdns/recursordist/falconsigners.cc
+@@ -0,0 +1 @@
++../falconsigners.cc
+\ No newline at end of file
+diff --git a/pdns/recursordist/m4/pdns_with_falcon.m4 b/pdns/recursordist/m4/pdns_with_falcon.m4
+new file mode 120000
+index 000000000..9a55c1581
+--- /dev/null
++++ b/pdns/recursordist/m4/pdns_with_falcon.m4
+@@ -0,0 +1 @@
++../../../m4/pdns_with_falcon.m4
+\ No newline at end of file
+diff --git a/pdns/recursordist/m4/pdns_with_mayo.m4 b/pdns/recursordist/m4/pdns_with_mayo.m4
+new file mode 120000
+index 000000000..beb42c0ef
+--- /dev/null
++++ b/pdns/recursordist/m4/pdns_with_mayo.m4
+@@ -0,0 +1 @@
++../../../m4/pdns_with_mayo.m4
+\ No newline at end of file
+diff --git a/pdns/recursordist/m4/pdns_with_sqisign.m4 b/pdns/recursordist/m4/pdns_with_sqisign.m4
+new file mode 120000
+index 000000000..2d6b37446
+--- /dev/null
++++ b/pdns/recursordist/m4/pdns_with_sqisign.m4
+@@ -0,0 +1 @@
++../../../m4/pdns_with_sqisign.m4
+\ No newline at end of file
+diff --git a/pdns/recursordist/mayosigners.cc b/pdns/recursordist/mayosigners.cc
+new file mode 120000
+index 000000000..9827e353c
+--- /dev/null
++++ b/pdns/recursordist/mayosigners.cc
+@@ -0,0 +1 @@
++../mayosigners.cc
+\ No newline at end of file
+diff --git a/pdns/recursordist/rec-main.cc b/pdns/recursordist/rec-main.cc
+index 364011723..0664dc2d2 100644
+--- a/pdns/recursordist/rec-main.cc
++++ b/pdns/recursordist/rec-main.cc
+@@ -2600,6 +2600,8 @@ int main(int argc, char** argv)
+ #if HAVE_FIBER_SANITIZER
+     // Asan needs more stack
+     ::arg().set("stack-size", "stack size per mthread") = "600000";
++#elif defined(HAVE_MAYO)
++    ::arg().set("stack-size", "stack size per mthread") = "300000";
+ #else
+     ::arg().set("stack-size", "stack size per mthread") = "200000";
+ #endif
+diff --git a/pdns/recursordist/sqisignsigners.cc b/pdns/recursordist/sqisignsigners.cc
+new file mode 120000
+index 000000000..172239815
+--- /dev/null
++++ b/pdns/recursordist/sqisignsigners.cc
+@@ -0,0 +1 @@
++../sqisignsigners.cc
+\ No newline at end of file
+diff --git a/pdns/sqisignsigners.cc b/pdns/sqisignsigners.cc
+new file mode 100644
+index 000000000..a7315f7a7
+--- /dev/null
++++ b/pdns/sqisignsigners.cc
+@@ -0,0 +1,124 @@
++extern "C"
++{
++#ifdef HAVE_CONFIG_H
++#include "config.h"
++#endif
++#include <patad-testbed/sqisign1.h>
++}
++#include "dnssecinfra.hh"
++#include "dnsseckeeper.hh"
++
++class SQISign1DNSCryptoKeyEngine : public DNSCryptoKeyEngine
++{
++public:
++  explicit SQISign1DNSCryptoKeyEngine(unsigned int algo) :
++    DNSCryptoKeyEngine(algo)
++  {}
++  string getName() const override { return "SQISign-1"; }
++  void create(unsigned int bits) override;
++
++  [[nodiscard]] storvector_t convertToISCVector() const override;
++  [[nodiscard]] std::string sign(const std::string& msg) const override;
++  [[nodiscard]] bool verify(const std::string& msg, const std::string& signature) const override;
++  [[nodiscard]] std::string getPublicKeyString() const override;
++  [[nodiscard]] int getBits() const override;
++  void fromISCMap(DNSKEYRecordContent& drc, std::map<std::string, std::string>& stormap) override;
++  void fromPublicKeyString(const std::string& content) override;
++
++  static std::unique_ptr<DNSCryptoKeyEngine> maker(unsigned int algorithm)
++  {
++    return make_unique<SQISign1DNSCryptoKeyEngine>(algorithm);
++  }
++
++private:
++  unsigned char d_pubkey[SQISIGN1_PUBLICKEYBYTES];
++  unsigned char d_seckey[SQISIGN1_SECRETKEYBYTES];
++};
++
++void SQISign1DNSCryptoKeyEngine::create(unsigned int bits)
++{
++  if (bits != (unsigned int)getBits()) {
++    throw runtime_error("Unsupported key length of " + std::to_string(bits) + " bits requested, SQISign class");
++  }
++  sqisign_keypair(d_pubkey, d_seckey);
++}
++
++int SQISign1DNSCryptoKeyEngine::getBits() const
++{
++  return SQISIGN1_SECRETKEYBYTES << 3;
++}
++
++DNSCryptoKeyEngine::storvector_t SQISign1DNSCryptoKeyEngine::convertToISCVector() const
++{
++  storvector_t storvector;
++  string algorithm = std::to_string(DNSSECKeeper::SQISIGN1) + " (SQISign-1)";
++
++  storvector.emplace_back("Algorithm", algorithm);
++
++  storvector.emplace_back("PrivateKey", string((char*)d_seckey, SQISIGN1_SECRETKEYBYTES));
++  storvector.emplace_back("PublicKey", string((char*)d_pubkey, SQISIGN1_PUBLICKEYBYTES));
++  return storvector;
++}
++
++void SQISign1DNSCryptoKeyEngine::fromISCMap(DNSKEYRecordContent& drc, std::map<std::string, std::string>& stormap)
++{
++  pdns::checked_stoi_into(drc.d_algorithm, stormap["algorithm"]);
++  string publicKey = stormap["publickey"];
++  string privateKey = stormap["privatekey"];
++
++  if (privateKey.length() != SQISIGN1_SECRETKEYBYTES)
++    throw runtime_error("Private key size mismatch in ISCMap, SQISign class");
++
++  if (publicKey.length() != SQISIGN1_PUBLICKEYBYTES)
++    throw runtime_error("Public key size mismatch in ISCMap, SQISign class");
++
++  memcpy(d_seckey, privateKey.c_str(), SQISIGN1_SECRETKEYBYTES);
++  memcpy(d_pubkey, publicKey.c_str(), SQISIGN1_PUBLICKEYBYTES);
++}
++
++std::string SQISign1DNSCryptoKeyEngine::getPublicKeyString() const
++{
++  return string((char*)d_pubkey, SQISIGN1_PUBLICKEYBYTES);
++}
++
++void SQISign1DNSCryptoKeyEngine::fromPublicKeyString(const std::string& input)
++{
++  if (input.length() != SQISIGN1_PUBLICKEYBYTES)
++    throw runtime_error("Public key size mismatch, SQISign class");
++
++  memcpy(d_pubkey, input.c_str(), SQISIGN1_PUBLICKEYBYTES);
++}
++
++std::mutex sqisign_sign_mutex; // XXX
++std::string SQISign1DNSCryptoKeyEngine::sign(const std::string& msg) const
++{
++  unsigned char combined[SQISIGN1_BYTES + msg.length()];
++  unsigned long long combined_length;
++
++  // XXX we need a mutex because when calling sqisign_sign concurrently, bad things happen.
++  cerr << "SQISign sign: waiting for mutex" << endl;
++  std::lock_guard<std::mutex> mutex(sqisign_sign_mutex);
++  cerr << "SQISign sign: mutex released, signing" << endl;
++  if (sqisign_sign(combined, &combined_length, (const unsigned char*)msg.c_str(), msg.length(), d_seckey) != 0) {
++    throw runtime_error(getName() + " failed to generate signature");
++  }
++  cerr << "SQISign sign: signing done" << endl;
++
++  return {(const char*)combined, combined_length - msg.length()};
++}
++
++bool SQISign1DNSCryptoKeyEngine::verify(const std::string& msg, const std::string& signature) const
++{
++  return sqisign_verify((const unsigned char*)msg.c_str(), msg.length(), (const unsigned char*)signature.c_str(), signature.length(), d_pubkey) == 0;
++}
++
++namespace
++{
++const struct LoaderSQISignStruct
++{
++  LoaderSQISignStruct()
++  {
++    DNSCryptoKeyEngine::report(DNSSECKeeper::SQISIGN1, &SQISign1DNSCryptoKeyEngine::maker);
++  }
++} loadersqisign;
++}
+diff --git a/pdns/test-signers.cc b/pdns/test-signers.cc
+index 0a1dbd8e7..960b74003 100644
+--- a/pdns/test-signers.cc
++++ b/pdns/test-signers.cc
+@@ -473,6 +473,12 @@ BOOST_FIXTURE_TEST_CASE(test_generic_signers, Fixture)
+   }
+ }
+ 
++// XXX MAYO-2 test
++
++// XXX SQISign-1 test
++
++// XXX Falcon-512 test
++
+ // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables,readability-identifier-length): Boost stuff.
+ BOOST_AUTO_TEST_CASE(test_hash_qname_with_salt)
+ {
+diff --git a/pdns/version.cc b/pdns/version.cc
+index 721439b2e..6440acd66 100644
+--- a/pdns/version.cc
++++ b/pdns/version.cc
+@@ -98,6 +98,15 @@ void showBuildConfiguration()
+ #ifdef HAVE_LIBCRYPTO_ED448
+     "libcrypto-ed448 " <<
+ #endif
++#ifdef HAVE_SQISIGN
++    "sqisign1 " <<
++#endif
++#ifdef HAVE_FALCON
++    "falcon512 " <<
++#endif
++#ifdef HAVE_MAYO
++    "mayo2 " <<
++#endif
+ #ifdef HAVE_LIBCRYPTO_EDDSA
+     "libcrypto-eddsa " <<
+ #endif
