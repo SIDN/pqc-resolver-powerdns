@@ -27,7 +27,7 @@
 
 # Dockerfile to generate an example container, running example.nl
 
-FROM resolver-powerdns-falcon512-sqisign1:latest
+FROM ghcr.io/sidn/pqc-resolver-powerdns:latest
 
 # Copy configuration files
 COPY recursor.conf /var/lib/powerdns/recursor.conf
