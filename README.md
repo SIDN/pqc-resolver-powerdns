@@ -1,6 +1,7 @@
 # PowerDNS recursive resolver with support for PQC algorithms
 
 This repository contains the scripts to build PowerDNS Recursor server with for support quantum-safe algorithm.
+More information can be found in [our blog post](https://www.sidnlabs.nl/en/news-and-blogs/set-up-your-own-pqc-testbed-for-dnssec-with-the-patad-open-source-software).
 
 Currently, we supported both Falcon512, SQIsign1 and Mayo2.
 
@@ -28,7 +29,7 @@ And you can confirm it works on a regular domain name:
 
 	dig example.nl -p 5300 @localhost 
 
-To test the PQC algorithm support, please refer to our [testbed repository for an example]().
+To test the PQC algorithm support, please refer to our [testbed repository for an example](https://github.com/SIDN/pqc-testbed/example).
 
 ## Updating patch PowerDNS
 
