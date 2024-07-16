@@ -29,7 +29,7 @@ And you can confirm it works on a regular domain name:
 
 	dig example.nl -p 5300 @localhost 
 
-To test the PQC algorithm support, please refer to our [testbed repository for an example](https://github.com/SIDN/pqc-testbed/example).
+To test the PQC algorithm support, please refer to our [testbed repository for an example](https://github.com/SIDN/pqc-testbed).
 
 ## Updating patch PowerDNS
 
